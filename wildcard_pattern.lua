@@ -1,30 +1,45 @@
 local wildcard_pattern = {}
 
-local function sub_question_mark(prefix, s)
-    if prefix == '\\' then
-        return '%?'
-    else
-        return '[^/]'
-    end
-end
-local function sub_star(prefix, s)
-    if prefix == '\\' then
-        return '%*' .. sub_star('', s:sub(2))
-    elseif #s == 0 then
-        return ''
-    elseif #s == 1 then
-        return "[^/]*"
-    else
-        return ".*"
-    end
-end
-local function sub_backslash(s)
-    if s:match('%w') then
-        return s
-    else
-        return '%' .. s
-    end
-end
+local scanner = {
+    -- simple substitution
+    ['%'] = function(state) return  "%%", 1 end,
+    ['.'] = function(state) return  "%.", 1 end,
+    ['('] = function(state) return  "%(", 1 end,
+    [')'] = function(state) return  "%)", 1 end,
+    ['+'] = function(state) return  "%+", 1 end,
+    ['?'] = function(state) return "[^/]", 1 end,
+    -- glob
+    ['*'] = function(state)
+        if state.following == '*' then
+            return '.*', 2
+        else
+            return '[^/]*', 1
+        end
+    end,
+    -- character set and ranges
+    ['['] = function(state)
+        state.in_brackets = true
+        if state.following == '!' then
+            return '[^', 2
+        elseif state.following == '-' then
+            return '[%-', 2
+        else
+            return '[', 1
+        end
+    end,
+    [']'] = function(state)
+        state.in_brackets = false
+        return ']', 1
+    end,
+    ['-'] = function(state)
+        return state.in_brackets and state.following ~= ']' and '-' or '%-', 1
+    end,
+    ['\\'] = function(state)
+        local following = state.following
+        return following:match('%w') and following or '%' .. following, 2
+    end,
+
+}
 --- Create a Lua pattern from wildcard.
 --
 -- Escapes:
@@ -33,7 +48,7 @@ end
 --   '(' -> '%('
 --   ')' -> '%)'
 --   '+' -> '%+'
---   '-' -> '%-'
+--   '-' -> '%-' (unless inside range like [0-9])
 -- Unescape:
 --   '\' -> '%'
 -- Substitutions:
@@ -47,13 +62,22 @@ end
 --
 -- @treturn string Lua pattern corresponding to given wildcard
 function wildcard_pattern.from_wildcard(s, anchor_to_slash)
-    s = s:gsub('[%%%.%(%)+-]', '%%%0')
-    s = s:gsub('([^?]?)%?', sub_question_mark)
-        :gsub('([^*]?)(%*+)', sub_star)
-        :gsub('%[!', '[%^')
-        :gsub('\\(.)', sub_backslash)
+    local init, state, current = 1, {}
+    while true do
+        local next_special_pos = s:find("[%%%.()+%-\\?*%[%]]", init)
+        local copy_verbatim = s:sub(init, (next_special_pos and next_special_pos - 1))
+        if copy_verbatim ~= '' then
+            table.insert(state, copy_verbatim)
+        end
+        if not next_special_pos then break end
+        current, state.following = s:sub(next_special_pos, next_special_pos), s:sub(next_special_pos + 1, next_special_pos + 1)
+        local insert, advance = scanner[current](state)
+        table.insert(state, insert)
+        init = next_special_pos + advance
+    end
+    local pattern = table.concat(state)
     local anchor = anchor_to_slash and '%f[/]' or '^'
-    return anchor .. s .. '$'
+    return anchor .. pattern .. '$'
 end
 
 --- Try matching `s` to every pattern in `t`, returning `s` if any match occurs
@@ -96,7 +120,7 @@ function wildcard_pattern.from_ignore(contents, comment_prefix)
         if line:sub(1, comment_prefix_length) ~= comment_prefix then
             local trimmed = line:match("^%s*(.-)%s*$")
             if trimmed ~= '' then
-                table.insert(t, wildcard_pattern.from_wildcard(trimmed, trimmed:find("/", 1, true)))
+                table.insert(t, wildcard_pattern.from_wildcard(trimmed, trimmed:find("/.", 1, true)))
             end
         end
     end
