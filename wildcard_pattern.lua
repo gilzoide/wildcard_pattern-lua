@@ -41,6 +41,11 @@ end
 --   '**' -> '.*'
 --   '*'  -> '[^/]*'
 --   '[!' -> '[^'
+--
+-- @tparam string s Wildcard string
+-- @param[opt] unanchored If present and truthy, don't anchor pattern in string bounds with '^' and '$'
+--
+-- @treturn string Lua pattern corresponding to given wildcard
 function wildcard_pattern.from_wildcard(s, unanchored)
     s = s:gsub('[%%%.%(%)+-]', '%%%0')
     s = s:gsub('([^?]?)%?', sub_question_mark)
