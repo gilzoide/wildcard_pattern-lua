@@ -1,4 +1,6 @@
 # wildcard\_pattern.lua
+[![Build Status](https://travis-ci.org/gilzoide/wildcard_pattern.lua.svg?branch=master)](https://travis-ci.org/gilzoide/wildcard_pattern.lua)
+
 Lua library for using shell-like wildcards as string patterns.
 
 Supports importing wildcards from gitignore-like content.
