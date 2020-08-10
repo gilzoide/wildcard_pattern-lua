@@ -1,5 +1,12 @@
 local wildcard_pattern = {}
 
+local function sub_star(s)
+    if #s == 1 then
+        return "[^/]*"
+    else
+        return ".*"
+    end
+end
 --- Create a Lua pattern from wildcard.
 --
 -- Escapes:
@@ -16,13 +23,6 @@ local wildcard_pattern = {}
 --   '**' -> '.*'
 --   '*'  -> '[^/]*'
 --   '[!' -> '[^'
-local function sub_star(s)
-    if #s == 1 then
-        return "[^/]*"
-    else
-        return ".*"
-    end
-end
 function wildcard_pattern.from_wildcard(s, unanchored)
     s = s:gsub('[%%%.%(%)+-]', '%%%0')
     s = s:gsub('\\(.)', '%%%1')
