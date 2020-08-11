@@ -12,7 +12,7 @@ local scanner = {
     ['*'] = function(state)
         local double_asterisk, trailing_slash = state.following:match("(%*)(/?)")
         if trailing_slash == '/' then
-            return '.*%f[^\0/]', 3
+            return '.*%f[^%z/]', 3
         elseif double_asterisk then
             return '.*', 2
         else
@@ -79,7 +79,7 @@ function wildcard_pattern.from_wildcard(s, anchor_to_slash)
         init = next_special_pos + advance
     end
     local pattern = table.concat(state)
-    local anchor = anchor_to_slash and '%f[^\0/]' or '^'
+    local anchor = anchor_to_slash and '%f[^%z/]' or '^'
     return anchor .. pattern .. '$'
 end
 
@@ -89,8 +89,7 @@ end
 -- @return[2]  `false` if `s` didn't match any pattern in `t`
 function wildcard_pattern.any_match(t, s)
     for i, patt in ipairs(t) do
-        local m = s:match(patt)
-        if m then
+        if s:match(patt) then
             return s
         end
     end
