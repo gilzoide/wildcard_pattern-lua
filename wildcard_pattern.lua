@@ -10,7 +10,10 @@ local scanner = {
     ['?'] = function(state) return "[^/]", 1 end,
     -- glob
     ['*'] = function(state)
-        if state.following == '*' then
+        local double_asterisk, trailing_slash = state.following:match("(%*)(/?)")
+        if trailing_slash == '/' then
+            return '.*%f[^\0/]', 3
+        elseif double_asterisk then
             return '.*', 2
         else
             return '[^/]*', 1
@@ -19,9 +22,10 @@ local scanner = {
     -- character set and ranges
     ['['] = function(state)
         state.in_brackets = true
-        if state.following == '!' then
+        local following = state.following:sub(1, 1)
+        if following == '!' then
             return '[^', 2
-        elseif state.following == '-' then
+        elseif following == '-' then
             return '[%-', 2
         else
             return '[', 1
@@ -35,7 +39,7 @@ local scanner = {
         return state.in_brackets and state.following ~= ']' and '-' or '%-', 1
     end,
     ['\\'] = function(state)
-        local following = state.following
+        local following = state.following:sub(1, 1)
         return following:match('%w') and following or '%' .. following, 2
     end,
 
@@ -70,13 +74,13 @@ function wildcard_pattern.from_wildcard(s, anchor_to_slash)
             table.insert(state, copy_verbatim)
         end
         if not next_special_pos then break end
-        current, state.following = s:sub(next_special_pos, next_special_pos), s:sub(next_special_pos + 1, next_special_pos + 1)
+        current, state.following = s:sub(next_special_pos, next_special_pos), s:sub(next_special_pos + 1)
         local insert, advance = scanner[current](state)
         table.insert(state, insert)
         init = next_special_pos + advance
     end
     local pattern = table.concat(state)
-    local anchor = anchor_to_slash and '%f[/]' or '^'
+    local anchor = anchor_to_slash and '%f[^\0/]' or '^'
     return anchor .. pattern .. '$'
 end
 
@@ -106,7 +110,13 @@ end
 function wildcard_aggregate_mt:insert(line)
     local trimmed = line:match("^%s*(.-)%s*$")
     if trimmed ~= '' and trimmed:sub(1, 1) ~= '#' then
-        local pattern = wildcard_pattern.from_wildcard(trimmed, not trimmed:find("/.", 1, true))
+        local slash_pos, anchor_to_slash = trimmed:find('/', 1, true), false
+        if slash_pos == 1 then
+            trimmed = trimmed:sub(2)
+        else
+            anchor_to_slash = true
+        end
+        local pattern = wildcard_pattern.from_wildcard(trimmed, anchor_to_slash)
         table.insert(self, pattern)
     end
 end
