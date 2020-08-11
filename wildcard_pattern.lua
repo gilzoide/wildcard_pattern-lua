@@ -103,7 +103,7 @@ function wildcard_pattern.from_ignore(contents, comment_prefix)
     if content_type == 'string' then
         line_iterator = string.gmatch(contents, "[^\n]*")
     elseif content_type == 'table' or content_type == 'userdata' then
-        line_iterator = content_type.lines and content_type:lines()
+        line_iterator = contents.lines and contents:lines()
         if not line_iterator then
             return nil, string.format("Couldn't find a `lines` method in given %s", content_type)
         end
