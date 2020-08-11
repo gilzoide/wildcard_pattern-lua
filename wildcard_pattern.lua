@@ -8,7 +8,7 @@ local scanner = {
     [')'] = function(state) return  "%)", 1 end,
     ['+'] = function(state) return  "%+", 1 end,
     ['?'] = function(state) return "[^/]", 1 end,
-    -- glob
+    -- star patterns
     ['*'] = function(state)
         local double_asterisk, trailing_slash = state.following:match("(%*)(/?)")
         if trailing_slash == '/' then
@@ -36,7 +36,7 @@ local scanner = {
         return ']', 1
     end,
     ['-'] = function(state)
-        return state.in_brackets and state.following ~= ']' and '-' or '%-', 1
+        return state.in_brackets and state.following:sub(1, 1) ~= ']' and '-' or '%-', 1
     end,
     ['\\'] = function(state)
         local following = state.following:sub(1, 1)
@@ -87,7 +87,7 @@ end
 --- Try matching `s` to every pattern in `t`, returning `s` if any match occurs
 --
 -- @treturn[1] string `s`, if there was a match
--- @return[2] `false` if `s` didn't match any pattern in `t`
+-- @return[2]  `false` if `s` didn't match any pattern in `t`
 function wildcard_pattern.any_match(t, s)
     for i, patt in ipairs(t) do
         local m = s:match(patt)
@@ -107,6 +107,9 @@ function wildcard_aggregate_mt.new()
 end
 
 --- Insert a wildcard in an aggregate pattern table
+-- 
+-- @treturn[1] string The generated pattern
+-- @treturn[2] nil    If line is not empty nor a comment (leading '#')
 function wildcard_aggregate_mt:insert(line)
     local trimmed = line:match("^%s*(.-)%s*$")
     if trimmed ~= '' and trimmed:sub(1, 1) ~= '#' then
@@ -118,6 +121,7 @@ function wildcard_aggregate_mt:insert(line)
         end
         local pattern = wildcard_pattern.from_wildcard(trimmed, anchor_to_slash)
         table.insert(self, pattern)
+        return pattern
     end
 end
 
@@ -132,37 +136,68 @@ end
 --- Remove a pattern from an aggregate pattern table
 wildcard_aggregate_mt.remove = table.remove
 
---- Create an aggregate pattern table from gitignore-like content.
+--- Gets a line iterator function from `contents`
 --
--- @param contents String, line iterator function (e.g., `io.lines(...)`),
+-- @param contents String, line iterator function (e.g., `io.lines(...)` or `file:lines()`),
 --                 or a table or userdata containing a `lines` method (e.g., files).
-function wildcard_aggregate_mt.from(contents)
+-- 
+-- @treturn[1] function Line iterator
+-- @treturn[2] nil
+-- @treturn[2] string Error message if iterator could not be generated
+local function line_iterator_from(contents)
     local content_type, line_iterator = type(contents)
-    if content_type == 'string' then
+    if content_type == 'function' then
+        line_iterator = contents
+    elseif content_type == 'string' then
         line_iterator = string.gmatch(contents, "[^\n]*")
     elseif content_type == 'table' or content_type == 'userdata' then
         line_iterator = contents.lines and contents:lines()
         if not line_iterator then
             return nil, string.format("Couldn't find a `lines` method in given %s", content_type)
         end
-    elseif content_type == 'function' then
-        line_iterator = contents
     else
         return nil, string.format("Expected contents be a string, table, userdata or function, found %s", content_type)
+    end
+    return line_iterator
+end
+
+--- Extend an aggregate pattern table with wildcards from gitignore-like file content.
+--
+-- @param contents String, line iterator function (e.g., `io.lines(...)` or `file:lines()`),
+--                 or a table or userdata containing a `lines` method (e.g., files).
+function wildcard_aggregate_mt:extend_from(contents)
+    local line_iterator, err = line_iterator_from(contents)
+    if not line_iterator then
+        return nil, err
+    end
+
+    for line in line_iterator do
+        self:insert(line)
+    end
+end
+
+--- Create an aggregate pattern table from gitignore-like content.
+--
+-- @param contents String, line iterator function (e.g., `io.lines(...)` or `file:lines()`),
+--                 or a table or userdata containing a `lines` method (e.g., files).
+-- @return Aggregate pattern table
+function wildcard_aggregate_mt.from(contents)
+    local line_iterator, err = line_iterator_from(contents)
+    if not line_iterator then
+        return nil, err
     end
 
     comment_prefix = comment_prefix or '#'
     local comment_prefix_length = #comment_prefix
     local t = wildcard_aggregate_mt.new()
-    for line in line_iterator do
-        t:insert(line)
-    end
+    t:extend_from(line_iterator)
     return t
 end
 
 wildcard_aggregate_mt.__index = {
     insert = wildcard_aggregate_mt.insert,
     extend = wildcard_aggregate_mt.extend,
+    extend_from = wildcard_aggregate_mt.extend_from,
     remove = wildcard_aggregate_mt.remove,
     any_match = wildcard_pattern.any_match,
 }
