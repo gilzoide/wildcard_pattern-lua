@@ -4,6 +4,12 @@
 Lua library for using shell-like wildcards as string patterns with support for importing gitignore-like file content.
 
 
+## Installation
+Copy `wildcard_pattern.lua` to your LUA\_PATH or install with [LuaRocks](https://luarocks.org/):
+
+		$ luarocks install wildcard_pattern
+
+
 ## Usage
 
 ```lua
@@ -22,6 +28,7 @@ assert(not wildcard_pattern.any_match(ignore_patterns, "hello_world.lua"))  -- a
 assert(not ignore_patterns:any_match("hello_world.lua"))
 assert(not ignore_patterns("hello_world.lua"))
 ```
+
 
 ## What is supported
 - A single asterisk `*` matches zero or more characters that are not directory separators `/`
