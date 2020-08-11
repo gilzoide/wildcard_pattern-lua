@@ -37,10 +37,11 @@ local ignore = wildcard_pattern.aggregate.from([[
 # This is a test ignore file
 *.md
 /from-root-only
+exact-name
 ]])
 
 local function should_match(path)
-    assert.is_truthy(wildcard_pattern.any_match(ignore, path))
+    assert.are.same(path, wildcard_pattern.any_match(ignore, path))
 end
 local function should_not_match(path)
     assert.is_falsy(wildcard_pattern.any_match(ignore, path))
@@ -52,6 +53,12 @@ describe("Patterns from ignore files", function()
         assert.are.same(wildcard_pattern.any_match(ignore, "README.md"), ignore:any_match("README.md"))
         assert.are.same(wildcard_pattern.any_match(ignore, "tutorial/1-Getting-started.md"), ignore("tutorial/1-Getting-started.md"))
         assert.are.same(wildcard_pattern.any_match(ignore, "tutorial/1-Getting-started.md"), ignore:any_match("tutorial/1-Getting-started.md"))
+    end)
+
+    it("match exact patterns after '/' boundaries", function()
+        should_match("exact-name")
+        should_match("dir/exact-name")
+        should_not_match("dir/not-exact-name")
     end)
 
     it("match in any directory depth if '/' is not found in it", function()

@@ -58,7 +58,7 @@ local scanner = {
 --   '[!' -> '[^'
 --
 -- @tparam string s Wildcard string
--- @param[opt] anchor_to_slash If truthy, anchor pattern to directory separators instead of to the begining of `s`
+-- @param[opt] anchor_to_slash If truthy, anchor pattern to optional directory separator '/' instead of to the begining of `s`
 --
 -- @treturn string Lua pattern corresponding to given wildcard
 function wildcard_pattern.from_wildcard(s, anchor_to_slash)

@@ -6,7 +6,7 @@ local patterns = {
 }
 
 local function should_match(path)
-    assert.is_truthy(wildcard_pattern.any_match(patterns, path))
+    assert.are.same(path, wildcard_pattern.any_match(patterns, path))
 end
 local function should_not_match(path)
     assert.is_falsy(wildcard_pattern.any_match(patterns, path))
