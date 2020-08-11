@@ -7,7 +7,7 @@ Lua library for using shell-like wildcards as string patterns with support for i
 ## Installation
 Copy `wildcard_pattern.lua` to your LUA\_PATH or install with [LuaRocks](https://luarocks.org/):
 
-		$ luarocks install wildcard_pattern
+    $ luarocks install wildcard_pattern
 
 
 ## Usage
