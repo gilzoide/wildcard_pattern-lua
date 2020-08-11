@@ -14,10 +14,13 @@ local patt = wildcard_pattern.from_wildcard("*.lua")
 assert(string.match("hello_world.lua", patt))
 
 -- Or import a gitignore-like content from file
-local ignore_patterns = wildcard_pattern.from_ignore(io.open(".gitignore"))
--- local ignore_patterns = wildcard_pattern.from_ignore(io.open(".gitignore"):read('*a'))  -- or from text
--- local ignore_patterns = wildcard_pattern.from_ignore(io.lines(".gitignore"))  -- or from an iterator function
+local ignore_patterns = wildcard_pattern.aggregate.from(io.open(".gitignore"))
+-- local ignore_patterns = wildcard_pattern.aggregate.from(io.open(".gitignore"):read('*a'))  -- or from text
+-- local ignore_patterns = wildcard_pattern.aggregate.from(io.lines(".gitignore"))  -- or from an iterator function
 assert(not wildcard_pattern.any_match(ignore_patterns, "hello_world.lua"))  -- assuming your .gitignore have no rules for ignoring hello_world.lua
+-- `any_match` is also a method and __call metamethod for ignore files
+assert(not ignore_patterns:any_match("hello_world.lua"))
+assert(not ignore_patterns("hello_world.lua"))
 ```
 
 ## What is supported

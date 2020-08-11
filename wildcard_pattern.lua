@@ -94,11 +94,31 @@ function wildcard_pattern.any_match(t, s)
     return false
 end
 
---- Create a table with Lua patterns from a gitignore-like content.
+--- Metatable for aggregate patterns, e.g., from gitignore-like files
+local wildcard_aggregate_mt = {}
+
+--- Create a new aggregate pattern table
+function wildcard_aggregate_mt.new()
+    return setmetatable({}, wildcard_aggregate_mt)
+end
+
+--- Insert a wildcard in an aggregate pattern table
+function wildcard_aggregate_mt:insert(line)
+    local trimmed = line:match("^%s*(.-)%s*$")
+    if trimmed ~= '' and trimmed:sub(1, 1) ~= '#' then
+        local pattern = wildcard_pattern.from_wildcard(trimmed, not trimmed:find("/.", 1, true))
+        table.insert(self, pattern)
+    end
+end
+
+--- Remove a pattern from an aggregate pattern table
+wildcard_aggregate_mt.remove = table.remove
+
+--- Create an aggregate pattern table from gitignore-like content.
 --
 -- @param contents String, line iterator function (e.g., `io.lines(...)`),
 --                 or a table or userdata containing a `lines` method (e.g., files).
-function wildcard_pattern.from_ignore(contents, comment_prefix)
+function wildcard_aggregate_mt.from(contents)
     local content_type, line_iterator = type(contents)
     if content_type == 'string' then
         line_iterator = string.gmatch(contents, "[^\n]*")
@@ -115,16 +135,20 @@ function wildcard_pattern.from_ignore(contents, comment_prefix)
 
     comment_prefix = comment_prefix or '#'
     local comment_prefix_length = #comment_prefix
-    local t = {}
+    local t = wildcard_aggregate_mt.new()
     for line in line_iterator do
-        if line:sub(1, comment_prefix_length) ~= comment_prefix then
-            local trimmed = line:match("^%s*(.-)%s*$")
-            if trimmed ~= '' then
-                table.insert(t, wildcard_pattern.from_wildcard(trimmed, trimmed:find("/.", 1, true)))
-            end
-        end
+        t:insert(line)
     end
     return t
 end
+
+wildcard_aggregate_mt.__index = {
+    insert = wildcard_aggregate_mt.insert,
+    remove = wildcard_aggregate_mt.remove,
+    any_match = wildcard_pattern.any_match,
+}
+wildcard_aggregate_mt.__call = wildcard_pattern.any_match
+
+wildcard_pattern.aggregate = wildcard_aggregate_mt
 
 return wildcard_pattern

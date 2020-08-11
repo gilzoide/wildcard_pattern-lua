@@ -2,7 +2,7 @@ local wildcard_pattern = require 'wildcard_pattern'
 
 local function import_file(path)
     local file = assert(io.open(path))
-    local result = assert(wildcard_pattern.from_ignore(file))
+    local result = assert(wildcard_pattern.aggregate.from(file))
     file:close()
     return result
 end
@@ -11,12 +11,12 @@ local function import_text(path)
     local file = assert(io.open(path))
     local text = file:read('*a')
     file:close()
-    return wildcard_pattern.from_ignore(text)
+    return wildcard_pattern.aggregate.from(text)
 end
 
 local function import_iterator(path)
     local iterator = io.lines(path)
-    return wildcard_pattern.from_ignore(iterator)
+    return wildcard_pattern.aggregate.from(iterator)
 end
 
 it("Importing ignore files from any approach yields the same aggregated patterns", function()
@@ -33,7 +33,7 @@ it("Importing ignore files from any approach yields the same aggregated patterns
 end)
 
 -------------------------------------------------------------------------------
-local ignore = wildcard_pattern.from_ignore([[
+local ignore = wildcard_pattern.aggregate.from([[
 # This is a test ignore file
 *.md
 /from-root-only
@@ -47,6 +47,13 @@ local function should_not_match(path)
 end
 
 describe("Patterns from ignore files", function()
+    it("when called directly or with `:any_match` calls wildcard_pattern.any_match", function()
+        assert.are.same(wildcard_pattern.any_match(ignore, "README.md"), ignore("README.md"))
+        assert.are.same(wildcard_pattern.any_match(ignore, "README.md"), ignore:any_match("README.md"))
+        assert.are.same(wildcard_pattern.any_match(ignore, "tutorial/1-Getting-started.md"), ignore("tutorial/1-Getting-started.md"))
+        assert.are.same(wildcard_pattern.any_match(ignore, "tutorial/1-Getting-started.md"), ignore:any_match("tutorial/1-Getting-started.md"))
+    end)
+
     it("match in any directory depth if '/' is not found in it", function()
         should_match("README.md")
         should_match("tutorial/1-Getting-started.md")
