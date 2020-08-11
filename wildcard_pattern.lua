@@ -121,6 +121,14 @@ function wildcard_aggregate_mt:insert(line)
     end
 end
 
+--- Facility to inserting several wildcards in a single call
+function wildcard_aggregate_mt:extend(...)
+    for i = 1, select('#', ...) do
+        local wildcard = select(i, ...)
+        self:insert(wildcard)
+    end
+end
+
 --- Remove a pattern from an aggregate pattern table
 wildcard_aggregate_mt.remove = table.remove
 
@@ -154,6 +162,7 @@ end
 
 wildcard_aggregate_mt.__index = {
     insert = wildcard_aggregate_mt.insert,
+    extend = wildcard_aggregate_mt.extend,
     remove = wildcard_aggregate_mt.remove,
     any_match = wildcard_pattern.any_match,
 }
