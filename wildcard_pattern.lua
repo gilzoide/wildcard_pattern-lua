@@ -42,7 +42,6 @@ local scanner = {
         local following = state.following:sub(1, 1)
         return following:match('%w') and following or '%' .. following, 2
     end,
-
 }
 --- Create a Lua pattern from wildcard.
 --
@@ -204,5 +203,7 @@ wildcard_aggregate_mt.__index = {
 wildcard_aggregate_mt.__call = wildcard_pattern.any_match
 
 wildcard_pattern.aggregate = wildcard_aggregate_mt
+
+wildcard_pattern._VERSION = '1.0.0'
 
 return wildcard_pattern
