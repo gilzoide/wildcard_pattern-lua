@@ -27,6 +27,15 @@ assert(not wildcard_pattern.any_match(ignore_patterns, "hello_world.lua"))  -- a
 -- `any_match` is also a method and __call metamethod for ignore files
 assert(not ignore_patterns:any_match("hello_world.lua"))
 assert(not ignore_patterns("hello_world.lua"))
+
+-- You can extend your aggregate wildcard with `insert`, `extend` or `extend_from` methods
+ignore_patterns:insert("hello_world.lua")
+ignore_patterns:extend("hello_world.lua", "hello_world[0-9].lua")
+ignore_patterns:extend_from([[
+# `extend_from` uses gitignore-like file content, just like `wildcard_pattern.aggregate.from`
+world_hello?.lua
+**.ignore
+]])
 ```
 
 
